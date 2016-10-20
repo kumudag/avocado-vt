@@ -967,6 +967,13 @@ class VM(virt_vm.BaseVM):
         if params.get("virt_install_debug") == "yes":
             virt_install_cmd += " --debug"
 
+        emulatorpath = params.get("emulator_path", None)
+        if emulatorpath:
+            if not has_sub_option('boot', 'emulator'):
+                logging.warning("emulator option not supported by virt-install")
+            else:
+                virt_install_cmd += " --boot emulator=%s" % emulatorpath
+
         # bz still open, not fully functional yet
         if params.get("use_virt_install_wait") == "yes":
             virt_install_cmd += (" --wait %s" %
