@@ -3,10 +3,7 @@ node ('master') {
         stage('Clone op-test') {
             git branch: 'kernel_install', url: 'https://github.com/sathnaga/op-test-framework.git'
             echo "Clone op-test"
-            sh '''#!/bin/bash
-            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/0001-testcases.RunHostTest-Add-support-for-copying-result.patch -O result.patch
-            git am result.patch'''
-        }
+            }
         stage('Install Upstream Kernel in Host') {
             echo "Install Upstream Kernel in Host"
             sh '''#!/bin/bash
@@ -48,46 +45,16 @@ node ('master') {
             wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/machine_avocadokvmtests.conf -O machine_avocadokvmtests.conf
             ./op-test --run testcases.RunHostTest.RunHostTest -c ./machine_avocadokvmtests.conf'''
         }
+    } catch (e) {
+        throw e
+    }
+    finally {
         stage('Pulish Results') {
             echo "Pulish Results"
             junit allowEmptyResults: true, testResults: 'test-reports/test-run*/TEST-*.xml,test-reports/test-run*/host-results/*/results.xml'
             archiveArtifacts allowEmptyArchive: true, artifacts: 'test-reports/**', fingerprint: true
             cleanWs()
+            slackSend channel: '#ltc-test-kop', message: 'Completed ${env.JOB_NAME} ${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>) '
         }
-    } catch (e) {
-        currentBuild.result = "FAILED"
-        throw e
-    } finally {
-        notifyBuild(currentBuild.result)
     }
-
-}
-
-
-def notifyBuild(String buildStatus = 'STARTED') {
-  // build status of null means successful
-  buildStatus =  buildStatus ?: 'SUCCESSFUL'
-
-  // Default values
-  def colorName = 'RED'
-  def colorCode = '#FF0000'
-  def subject = "${buildStatus}: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'"
-  def summary = "${subject} (${env.BUILD_URL})"
-  def details = """KVMCI #[${env.BUILD_NUMBER}] ${buildStatus} \n
-    Check console output at (${env.BUILD_URL})"""
-
-  // Override default values based on build status
-  if (buildStatus == 'STARTED') {
-    color = 'YELLOW'
-    colorCode = '#FFFF00'
-  } else if (buildStatus == 'SUCCEED') {
-    color = 'GREEN'
-    colorCode = '#00FF00'
-  } else {
-    color = 'RED'
-    colorCode = '#FF0000'
-  }
-
-  // Send notifications
-  slackSend (color: colorCode, message: details)
 }
