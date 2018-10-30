@@ -1,0 +1,69 @@
+node ('master') {
+    pipeline {
+    agent any
+    triggers {
+        cron('@daily')
+    }
+    parameters {
+       string(name: 'hostkernelcommit', defaultValue: 'master', description: 'Host Kernel Commit')
+
+       text(name: 'BIOGRAPHY', defaultValue: '', description: 'Enter some information about the person')
+
+       booleanParam(name: 'TOGGLE', defaultValue: true, description: 'Toggle this value')
+
+       choice(name: 'CHOICE', choices: ['One', 'Two', 'Three'], description: 'Pick something')
+
+       password(name: 'PASSWORD', defaultValue: 'SECRET', description: 'Enter a password')
+
+       file(name: "FILE", description: "Choose a file to upload")
+   }
+    def kvmci_home = "http://9.40.192.92:81/sath/kvmci"
+    stage('Clone op-test') {
+        git branch: 'kernel_install', url: 'https://github.com/sathnaga/op-test-framework.git'
+        sh '''#!/bin/bash
+        wget ${kvmci_home}/0001-testcases.RunHostTest-Add-support-for-copying-result.patch -O result.patch
+        git am result.patch
+        [ -d test-reports ] && rm -rf test-reports'''
+    }
+    stage('Host Kernel Install') {
+      sh '''#!/bin/bash
+        wget http://9.40.192.92:81/sath/kvmci/ci2_hostkernelinstall.conf -O ci2_hostkernelinstall.conf
+        ./op-test -c ./ci2_hostkernelinstall.conf --run testcases.InstallUpstreamKernel.InstallUpstreamKernel'''
+    }
+    stage('Avocado install') {
+       sh '''#!/bin/bash
+       wget http://9.40.192.92:81/sath/kvmci/avocadoinstall.conf -O avocadoinstall.conf
+       wget http://9.40.192.92:81/sath/kvmci/ci2_avocadoinstall.conf -O ci2_avocadoinstall.conf
+       ./op-test --run testcases.RunHostTest.RunHostTest -c ./ci2_avocadoinstall.conf'''
+    }
+    stage('Build Upstream Guest Kernel'){
+       sh '''#!/bin/bash
+       wget http://9.40.192.92:81/sath/kvmci/guestkernelbuild.conf -O guestkernelbuild.conf
+       wget http://9.40.192.92:81/sath/kvmci/ci2_guestkernelbuild.conf -O ci2_guestkernelbuild.conf
+       ./op-test --run testcases.RunHostTest.RunHostTest -c ./ci2_guestkernelbuild.conf'''
+    }
+    stage('Build Upstream qemu'){
+       sh '''#!/bin/bash
+       wget http://9.40.192.92:81/sath/kvmci/qemubuild.conf -O qemubuild.conf
+       wget http://9.40.192.92:81/sath/kvmci/ci2_qemubuild.conf -O ci2_qemubuild.conf
+       ./op-test --run testcases.RunHostTest.RunHostTest -c ./ci2_qemubuild.conf'''
+    }
+    stage('Build Upstream libvirt'){
+       sh '''#!/bin/bash
+       wget http://9.40.192.92:81/sath/kvmci/libvirtbuild.conf -O libvirtbuild.conf
+       wget http://9.40.192.92:81/sath/kvmci/ci2_libvirtbuild.conf -O ci2_libvirtbuild.conf
+       ./op-test --run testcases.RunHostTest.RunHostTest -c ./ci2_libvirtbuild.conf'''
+    }
+    stage('Run Avocado tests'){
+       sh '''#!/bin/bash
+       wget http://9.40.192.92:81/sath/kvmci/avocadokvmtests.conf -O avocadokvmtests.conf
+       wget http://9.40.192.92:81/sath/kvmci/ci2_avocadokvmtests.conf -O ci2_avocadokvmtests.conf
+       ./op-test --run testcases.RunHostTest.RunHostTest -c ./ci2_avocadokvmtests.conf'''
+    }
+    stage('Results') {
+      junit 'test-reports/test-run*/TEST-*.xml'
+      archiveArtifacts allowEmptyArchive: true, artifacts: 'test-reports/**', fingerprint: true
+      cleanWs()
+    }
+}
+}

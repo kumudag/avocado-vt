@@ -1,0 +1,93 @@
+node ('master') {
+    try {
+        stage('Clone op-test') {
+            git branch: 'kernel_install', url: 'https://github.com/sathnaga/op-test-framework.git'
+            echo "Clone op-test"
+            sh '''#!/bin/bash
+            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/0001-testcases.RunHostTest-Add-support-for-copying-result.patch -O result.patch
+            git am result.patch'''
+        }
+        stage('Install Upstream Kernel in Host') {
+            echo "Install Upstream Kernel in Host"
+            sh '''#!/bin/bash
+            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/machine_hostkernelinstall.conf -O machine_hostkernelinstall.conf
+            ./op-test --run testcases.InstallUpstreamKernel.InstallUpstreamKernel -c ./machine_hostkernelinstall.conf'''
+        }
+        stage('Install Avocado') {
+            echo "Install Avocado"
+            sh '''#!/bin/bash
+            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/avocadoinstall.conf -O avocadoinstall.conf
+            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/machine_avocadoinstall.conf -O machine_avocadoinstall.conf
+            ./op-test --run testcases.RunHostTest.RunHostTest -c ./machine_avocadoinstall.conf'''
+        }
+        stage('Build Upstream Guest Kernel') {
+            echo "Build Upstream Guest Kernel"
+            sh '''#!/bin/bash
+            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/guestkernelbuild.conf -O guestkernelbuild.conf
+            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/machine_guestkernelbuild.conf -O machine_guestkernelbuild.conf
+            ./op-test --run testcases.RunHostTest.RunHostTest -c ./machine_guestkernelbuild.conf'''
+        }
+        stage('Build Upstream Qemu') {
+            echo "Build Upstream Qemu"
+            sh '''#!/bin/bash
+            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/qemubuild.conf -O qemubuild.conf
+            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/machine_qemubuild.conf -O machine_qemubuild.conf
+            ./op-test --run testcases.RunHostTest.RunHostTest -c ./machine_qemubuild.conf'''
+        }
+        stage('Build Upstream Libvirt') {
+            echo "Build Upstream Libvirt"
+            sh '''#!/bin/bash
+            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/libvirtbuild.conf -O libvirtbuild.conf
+            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/machine_libvirtbuild.conf -O machine_libvirtbuild.conf
+            ./op-test --run testcases.RunHostTest.RunHostTest -c ./machine_libvirtbuild.conf'''
+        }
+        stage('Run Avocado tests with Upstream Kernel, Qemu, Libvirt') {
+            echo "Run Avocado tests with Upstream Kernel, Qemu, Libvirt"
+            sh '''#!/bin/bash
+            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/avocadokvmtests.conf -O avocadokvmtests.conf
+            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/machine_avocadokvmtests.conf -O machine_avocadokvmtests.conf
+            ./op-test --run testcases.RunHostTest.RunHostTest -c ./machine_avocadokvmtests.conf'''
+        }
+        stage('Pulish Results') {
+            echo "Pulish Results"
+            junit allowEmptyResults: true, testResults: 'test-reports/test-run*/TEST-*.xml,test-reports/test-run*/host-results/*/results.xml'
+            archiveArtifacts allowEmptyArchive: true, artifacts: 'test-reports/**', fingerprint: true
+            cleanWs()
+        }
+    } catch (e) {
+        currentBuild.result = "FAILED"
+        throw e
+    } finally {
+        notifyBuild(currentBuild.result)
+    }
+
+}
+
+
+def notifyBuild(String buildStatus = 'STARTED') {
+  // build status of null means successful
+  buildStatus =  buildStatus ?: 'SUCCESSFUL'
+
+  // Default values
+  def colorName = 'RED'
+  def colorCode = '#FF0000'
+  def subject = "${buildStatus}: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'"
+  def summary = "${subject} (${env.BUILD_URL})"
+  def details = """KVMCI #[${env.BUILD_NUMBER}] ${buildStatus} \n
+    Check console output at (${env.BUILD_URL})"""
+
+  // Override default values based on build status
+  if (buildStatus == 'STARTED') {
+    color = 'YELLOW'
+    colorCode = '#FFFF00'
+  } else if (buildStatus == 'SUCCEED') {
+    color = 'GREEN'
+    colorCode = '#00FF00'
+  } else {
+    color = 'RED'
+    colorCode = '#FF0000'
+  }
+
+  // Send notifications
+  slackSend (color: colorCode, message: details)
+}
