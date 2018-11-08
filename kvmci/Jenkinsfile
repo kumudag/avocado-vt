@@ -1,60 +1,66 @@
 node ('master') {
+    //agent any
+    //properties([parameters([string(defaultValue: 'ci2', description: '', name: 'cinode', trim: false), booleanParam(name: 'hostkernel', defaultValue: true, description: 'whether to build/install host kernel'), booleanParam(name: 'qemubuild', defaultValue: true, description: 'whether to build/install qemu'), booleanParam(name: 'libvirtbuild', defaultValue: true, description: 'whether to build/install libvirt')]), [$class: 'EnvInjectJobProperty', info: [loadFilesFromMaster: false, secureGroovyScript: [classpath: [], sandbox: false, script: '']], keepBuildVariables: true, keepJenkinsSystemVariables: true, on: true]])
+    properties([parameters([string(defaultValue: 'ci2', description: '', name: 'cinode', trim: false)]), [$class: 'EnvInjectJobProperty', info: [loadFilesFromMaster: false, secureGroovyScript: [classpath: [], sandbox: false, script: '']], keepBuildVariables: true, keepJenkinsSystemVariables: true, on: true]])
     try {
         stage('Clone op-test') {
             git branch: 'kernel_install', url: 'https://github.com/sathnaga/op-test-framework.git'
-            echo "Clone op-test"
+            sh '''#!/bin/bash
+                wget http://9.40.192.92:81/sath/kvmci/${cinode}/0001-op-test-Create-latest-softlink-to-latest-test-result.patch -O result.patch
+                git am result.patch
+                wget http://9.40.192.92:81/sath/kvmci/${cinode}/0001-Add-support-for-dracut-detection.patch -O dracut.patch
+                git am dracut.patch
+                '''
             }
         stage('Install Upstream Kernel in Host') {
-            echo "Install Upstream Kernel in Host"
-            sh '''#!/bin/bash
-            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/machine_hostkernelinstall.conf -O machine_hostkernelinstall.conf
-            ./op-test --run testcases.InstallUpstreamKernel.InstallUpstreamKernel -c ./machine_hostkernelinstall.conf'''
-        }
+                sh '''#!/bin/bash
+                wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/machine_hostkernelinstall.conf -O machine_hostkernelinstall.conf
+                ./op-test --run testcases.InstallUpstreamKernel.InstallUpstreamKernel -c ./machine_hostkernelinstall.conf'''
+            }
         stage('Install Avocado') {
-            echo "Install Avocado"
             sh '''#!/bin/bash
-            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/avocadoinstall.conf -O avocadoinstall.conf
-            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/machine_avocadoinstall.conf -O machine_avocadoinstall.conf
+            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/avocadoinstall.conf -O avocadoinstall.conf
+            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/machine_avocadoinstall.conf -O machine_avocadoinstall.conf
             ./op-test --run testcases.RunHostTest.RunHostTest -c ./machine_avocadoinstall.conf'''
-        }
+            }
         stage('Build Upstream Guest Kernel') {
-            echo "Build Upstream Guest Kernel"
             sh '''#!/bin/bash
-            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/guestkernelbuild.conf -O guestkernelbuild.conf
-            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/machine_guestkernelbuild.conf -O machine_guestkernelbuild.conf
+            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/guestkernelbuild.conf -O guestkernelbuild.conf
+            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/machine_guestkernelbuild.conf -O machine_guestkernelbuild.conf
             ./op-test --run testcases.RunHostTest.RunHostTest -c ./machine_guestkernelbuild.conf'''
         }
         stage('Build Upstream Qemu') {
-            echo "Build Upstream Qemu"
-            sh '''#!/bin/bash
-            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/qemubuild.conf -O qemubuild.conf
-            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/machine_qemubuild.conf -O machine_qemubuild.conf
-            ./op-test --run testcases.RunHostTest.RunHostTest -c ./machine_qemubuild.conf'''
-        }
+                sh '''#!/bin/bash
+                wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/qemubuild.conf -O qemubuild.conf
+                wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/machine_qemubuild.conf -O machine_qemubuild.conf
+                ./op-test --run testcases.RunHostTest.RunHostTest -c ./machine_qemubuild.conf'''
+            }
         stage('Build Upstream Libvirt') {
-            echo "Build Upstream Libvirt"
-            sh '''#!/bin/bash
-            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/libvirtbuild.conf -O libvirtbuild.conf
-            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/machine_libvirtbuild.conf -O machine_libvirtbuild.conf
-            ./op-test --run testcases.RunHostTest.RunHostTest -c ./machine_libvirtbuild.conf'''
-        }
+                sh '''#!/bin/bash
+                wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/libvirtbuild.conf -O libvirtbuild.conf
+                wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/machine_libvirtbuild.conf -O machine_libvirtbuild.conf
+                ./op-test --run testcases.RunHostTest.RunHostTest -c ./machine_libvirtbuild.conf'''
+            }
         stage('Run Avocado tests with Upstream Kernel, Qemu, Libvirt') {
-            echo "Run Avocado tests with Upstream Kernel, Qemu, Libvirt"
             sh '''#!/bin/bash
-            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/avocadokvmtests.conf -O avocadokvmtests.conf
-            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/machine_avocadokvmtests.conf -O machine_avocadokvmtests.conf
+            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/avocadokvmtests.conf -O avocadokvmtests.conf
+            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/machine_avocadokvmtests.conf -O machine_avocadokvmtests.conf
             ./op-test --run testcases.RunHostTest.RunHostTest -c ./machine_avocadokvmtests.conf'''
         }
-    } catch (e) {
+        } catch (e) {
         throw e
     }
     finally {
         stage('Pulish Results') {
-            echo "Pulish Results"
             junit allowEmptyResults: true, testResults: 'test-reports/test-run*/TEST-*.xml,test-reports/test-run*/host-results/*/results.xml'
             archiveArtifacts allowEmptyArchive: true, artifacts: 'test-reports/**', fingerprint: true
+            sh '''#!/bin/bash
+            find . -regex 'test-reports/latest/host-results/latest/test-results/[0]+1-.*/whiteboard' -exec {} . \\;
+            '''
+            def keyval = readJSON file: 'whiteboard'
+            slackSend channel: '#ltc-test-kop', message: "Tests ran on ${cinode} with qemu: ${keyval.qemu_version} libvirt: ${keyval.libvirt_version} kernel: ${keyval.kvm_version} Completed ${env.JOB_NAME} #${env.BUILD_NUMBER} results @ (<${env.BUILD_URL}/testReport/|Open>)"
             cleanWs()
-            slackSend channel: '#ltc-test-kop', message: 'Completed ${env.JOB_NAME} ${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>) '
         }
     }
+
 }
