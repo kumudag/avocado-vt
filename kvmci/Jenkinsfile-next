@@ -1,66 +1,55 @@
+def test_result = 1
+def state = 'Failed at start'
 node ('master') {
-    //agent any
-    //properties([parameters([string(defaultValue: 'ci2', description: '', name: 'cinode', trim: false), booleanParam(name: 'hostkernel', defaultValue: true, description: 'whether to build/install host kernel'), booleanParam(name: 'qemubuild', defaultValue: true, description: 'whether to build/install qemu'), booleanParam(name: 'libvirtbuild', defaultValue: true, description: 'whether to build/install libvirt')]), [$class: 'EnvInjectJobProperty', info: [loadFilesFromMaster: false, secureGroovyScript: [classpath: [], sandbox: false, script: '']], keepBuildVariables: true, keepJenkinsSystemVariables: true, on: true]])
-    //properties([parameters([string(defaultValue: 'ci2', description: '', name: 'cinode', trim: false)]), [$class: 'EnvInjectJobProperty', info: [loadFilesFromMaster: false, secureGroovyScript: [classpath: [], sandbox: false, script: '']], keepBuildVariables: true, keepJenkinsSystemVariables: true, on: true]])
-    properties([parameters([string(defaultValue: 'Failed at start', description: 'Failure string', name: 'state', trim: false), string(defaultValue: 'ci1', description: '', name: 'cinode', trim: false), string(defaultValue: 'merge', description: 'Brach to build', name: 'linux_branch', trim: false), string(defaultValue: 'https://git.kernel.org/pub/scm/linux/kernel/git/powerpc/linux.git', description: 'Repo to build', name: 'linux_repo', trim: false) ]), [$class: 'EnvInjectJobProperty', info: [loadFilesFromMaster: false, secureGroovyScript: [classpath: [], sandbox: false, script: '']], keepBuildVariables: true, keepJenkinsSystemVariables: true, on: true]])
+    properties([parameters([string(defaultValue: 'http://ltc-jenkins.aus.stglabs.ibm.com:81', description: '', name: 'http_server', trim: false),string(defaultValue: 'ci1', description: '', name: 'cinode', trim: false), string(defaultValue: 'merge', description: 'Brach to build', name: 'linux_branch', trim: false), string(defaultValue: 'https://git.kernel.org/pub/scm/linux/kernel/git/powerpc/linux.git', description: 'Repo to build', name: 'linux_repo', trim: false) ]), [$class: 'EnvInjectJobProperty', info: [loadFilesFromMaster: false, secureGroovyScript: [classpath: [], sandbox: false, script: '']], keepBuildVariables: true, keepJenkinsSystemVariables: true, on: true]])
     try {
         stage('Clone op-test') {
             state = "Failed during op-test clone"
             git branch: 'local_fixes', url: 'https://github.com/sathnaga/op-test-framework.git'
             }
         stage('Install Upstream Kernel in Host') {
-                state = "Failed during Install Upstream Kernel in Host"
-                sh '''#!/bin/bash
-                wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/machine_hostkernelinstall.conf -O machine_hostkernelinstall.conf
-                #./op-test --run testcases.InstallUpstreamKernel.InstallUpstreamKernel --git-repo=${linux_repo} --git-branch=${linux_branch} -c ./machine_hostkernelinstall.conf'''
-
-        }
-        stage('Install Avocado') {
-        state = "Failed to install Avocado in Host"
+            state = "Failed during Install Upstream Kernel in Host"
             sh '''#!/bin/bash
-            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/avocadoinstall.conf -O avocadoinstall.conf
-            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/machine_avocadoinstall.conf -O machine_avocadoinstall.conf
-            #./op-test --run testcases.RunHostTest.RunHostTest -c ./machine_avocadoinstall.conf'''
-
-        }
+                wget ${http_server}/sath/kvmci/${cinode}/machine.conf -O machine.conf
+                #./op-test --run testcases.InstallUpstreamKernel.InstallUpstreamKernel --git-repo=${linux_repo} --git-branch=${linux_branch} -c ./machine.conf'''
+            }
+        stage('Install Avocado') {
+            state = "Failed to install Avocado in Host"
+            sh '''#!/bin/bash
+            wget ${http_server}/sath/kvmci/${cinode}/avocadoinstall.conf -O avocadoinstall.conf
+            ./op-test --run testcases.RunHostTest.RunHostTest --host-cmd-file=./avocadoinstall.conf -c ./machine.conf'''
+            }
         stage('Build Upstream Guest Kernel') {
             state = "Failed to build upstream guest kernel"
             sh '''#!/bin/bash
-            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/guestkernelbuild.conf -O guestkernelbuild.conf
-            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/machine_guestkernelbuild.conf -O machine_guestkernelbuild.conf
-            #./op-test --run testcases.RunHostTest.RunHostTest -c ./machine_guestkernelbuild.conf'''
+            wget ${http_server}/sath/kvmci/${cinode}/guestkernelbuild.conf -O guestkernelbuild.conf
+            ./op-test --run testcases.RunHostTest.RunHostTest --host-cmd-file=./guestkernelbuild.conf -c ./machine.conf'''
         }
         stage('Build Upstream Qemu') {
-                state = "Failed to build qemu"
+            state = "Failed to build qemu"
                 sh '''#!/bin/bash
-                wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/qemubuild.conf -O qemubuild.conf
-                wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/machine_qemubuild.conf -O machine_qemubuild.conf
-                #./op-test --run testcases.RunHostTest.RunHostTest -c ./machine_qemubuild.conf'''
-
-        }
+                wget ${http_server}/sath/kvmci/${cinode}/qemubuild.conf -O qemubuild.conf
+                ./op-test --run testcases.RunHostTest.RunHostTest --host-cmd-file=./qemubuild.conf -c ./machine.conf'''
+            }
         stage('Build Upstream Libvirt') {
-                state = "Failed to build libvirt"
+            state = "Failed to build libvirt"
                 sh '''#!/bin/bash
-                wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/libvirtbuild.conf -O libvirtbuild.conf
-                wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/machine_libvirtbuild.conf -O machine_libvirtbuild.conf
-                #./op-test --run testcases.RunHostTest.RunHostTest -c ./machine_libvirtbuild.conf'''
+                wget ${http_server}/sath/kvmci/${cinode}/libvirtbuild.conf -O libvirtbuild.conf
+                ./op-test --run testcases.RunHostTest.RunHostTest --host-cmd-file=./libvirtbuild.conf -c ./machine.conf'''
             }
         stage('Run Avocado tests with Upstream Kernel, Qemu, Libvirt') {
             state = "Failed to run KVM Tests"
             sh '''#!/bin/bash
-            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/avocadokvmtests.conf -O avocadokvmtests.conf
-            wget http://ltc-jenkins.aus.stglabs.ibm.com:81/sath/kvmci/${cinode}/machine_avocadokvmtests.conf -O machine_avocadokvmtests.conf'''
-            def test_result = sh (returnStatus: true, script: './op-test --run testcases.RunHostTest.RunHostTest -c ./machine_avocadokvmtests.conf')
-            echo "${test_result}"
+            wget ${http_server}/sath/kvmci/${cinode}/avocadokvmtests.conf -O avocadokvmtests.conf
+            '''
+            test_result = sh (returnStatus: true, script: './op-test --run testcases.RunHostTest.RunHostTest --host-cmd-file=./avocadokvmtests.conf -c ./machine.conf')
             state = "Completed"
         }
         } catch (e) {
         throw e
-
     }
     finally {
         stage('Pulish Results') {
-            //xunit testDataPublishers: [[$class: 'TestDataPublisher']], testTimeMargin: '3000', thresholdMode: 1, thresholds: [], tools: [JUnit(deleteOutputFiles: false, failIfNotNew: false, pattern: 'test-reports/test-run*/TEST-*.xml,test-reports/test-run*/host-results/*/results.xml', skipNoTestFiles: true, stopProcessingIfError: false)]
             junit allowEmptyResults: true, testResults: 'test-reports/test-run*/TEST-*.xml,test-reports/test-run*/host-results/*/results.xml'
             script {
                 if (state == "Completed") {
@@ -68,15 +57,20 @@ node ('master') {
                     cp test-reports/latest/host-results/latest/test-results/1-*/whiteboard whiteboard
                     '''
                     def keyval = readJSON file: 'whiteboard'
-                    slackSend channel: '#ltc-test-kop', message: "${env.JOB_NAME} #${env.BUILD_NUMBER} ${state} on ${cinode} with qemu: ${keyval.qemu_version} libvirt: ${keyval.libvirt_version} kernel: ${keyval.kvm_version} patch: ${linux_branch} - To View Results (<${env.BUILD_URL}/testReport/|Open>)"
-                    cucumberSlackSend channel: '#ltc-test-kop', json: 'test-reports/test-run*/host-results/*/results.xml'
+                    script {
+                        if (test_result == 0) {
+                            slackSend channel: '#ltc-test-kop,#ltc-jenkins', message: "${env.JOB_NAME} #${env.BUILD_NUMBER} ${state} Successfully on ${cinode} with \nqemu: ${keyval.qemu_version} \nlibvirt: ${keyval.libvirt_version} \nkernel: ${keyval.kvm_version} \npatch: ${linux_branch} \nTo View Results (<${env.BUILD_URL}/testReport/|Open>) \nTo View ConsoleText (<${env.BUILD_URL}/consoleText/|Open>)"
+                        }
+                        else {
+                            slackSend channel: '#ltc-test-kop,#ltc-jenkins', message: "${env.JOB_NAME} #${env.BUILD_NUMBER} ${state} with Failed Tests on ${cinode} with \nqemu: ${keyval.qemu_version} \nlibvirt: ${keyval.libvirt_version} \nkernel: ${keyval.kvm_version} \npatch: ${linux_branch} \nTo View Results (<${env.BUILD_URL}/testReport/|Open>) \nTo View ConsoleText (<${env.BUILD_URL}/consoleText/|Open>)"
+                        }
+                    }
                     }
                 else {
-                    slackSend channel: '#ltc-test-kop', message: "${env.JOB_NAME} #${env.BUILD_NUMBER} ${state} on ${cinode} with patch: ${linux_branch} - To View Results (<${env.BUILD_URL}/testReport/|Open>)"
+                    slackSend channel: '#ltc-test-kop,#ltc-jenkins', message: "${env.JOB_NAME} #${env.BUILD_NUMBER} ${state} on ${cinode} with \npatch: ${linux_branch} \nTo View Results (<${env.BUILD_URL}/testReport/|Open>) \nTo View ConsoleText (<${env.BUILD_URL}/consoleText/|Open>)"
                     }
                 }
             archiveArtifacts allowEmptyArchive: true, artifacts: 'test-reports/**', fingerprint: true
-            echo "${state}"
             cleanWs()
         }
     }
