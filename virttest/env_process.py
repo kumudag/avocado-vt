@@ -1522,6 +1522,7 @@ def postprocess(test, params, env):
         else:
             logging.warning("Check either qemu build directory availablilty"
                             " or install gcovr package for qemu coverage report")
+
     # Postprocess all VMs and images
     try:
         process(test, params, env, postprocess_image,
