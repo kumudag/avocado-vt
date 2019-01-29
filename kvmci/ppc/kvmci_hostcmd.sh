@@ -3,10 +3,9 @@ BASEPATH=/home/kvmci
 KVMCILOG=$BASEPATH/kvmci.log
 EMULATORPATH=/usr/share/avocado-plugins-vt/bin/qemu
 echo "KVMCI: Building Upstream Kernel..."
-[ -d $BASEPATH/linux ] || (mkdir -p $BASEPATH && cd $BASEPATH && git clone https://github.com/torvalds/linux.git) >> $KVMCILOG 2>&1
+[ -d $BASEPATH/linux ] || (mkdir -p $BASEPATH && cd $BASEPATH && git clone https://github.com/torvalds/linux.git --depth 1) >> $KVMCILOG 2>&1
 cd $BASEPATH/linux && git pull >> $KVMCILOG 2>&1
-wget https://raw.githubusercontent.com/sathnaga/avocado-vt/kvmci/kvmci/ppc/config_kvmppc -O .config >> $KVMCILOG 2>&1
-make olddefconfig >> $KVMCILOG 2>&1
+make ppc64le_guest_defconfig >> $KVMCILOG 2>&1
 make -j 240 >> $KVMCILOG 2>&1
 setenforce 0
 
