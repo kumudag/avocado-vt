@@ -1445,9 +1445,10 @@ def run(test, params, env):
         # we only need to wait for successful login.
         if params.get("medium") == "import":
             try:
-                vm.login()
+                session = vm.wait_for_serial_login(timeout=vm.LOGIN_WAIT_TIMEOUT)
+                session.close()
                 break
-            except (remote.LoginError, Exception) as e:
+            except (remote.LoginError, virt_vm.VMError, IndexError, Exception) as e:
                 pass
 
         if migrate_background:
