@@ -2800,6 +2800,8 @@ class VM(virt_vm.BaseVM):
             redir_names = params.objects("redirs")
             host_ports = utils_misc.find_free_ports(
                 5000, 5899, len(redir_names))
+            if not host_ports:
+                host_ports = [5000]
 
             old_redirs = {}
             if self.redirs:
