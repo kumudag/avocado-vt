@@ -1992,10 +1992,11 @@ class VM(virt_vm.BaseVM):
         fcntl.lockf(lockfile, fcntl.LOCK_EX)
 
         try:
+            import random
             # Handle port redirections
             redir_names = params.objects("redirs")
             host_ports = utils_misc.find_free_ports(
-                5000, 5899, len(redir_names))
+                5000, 5899, len(redir_names)) or [random.randint(5000, 5899), random.randint(5000, 5899)]
             self.redirs = {}
             for i in range(len(redir_names)):
                 redir_params = params.object_params(redir_names[i])
@@ -2013,12 +2014,12 @@ class VM(virt_vm.BaseVM):
                     self.vnc_port = None
                     self.vnc_autoport = True
                 else:
-                    self.vnc_port = utils_misc.find_free_port(5900, 6100)
+                    self.vnc_port = utils_misc.find_free_port(5900, 6100) or [random.randint(5900, 6100)]
                     self.vnc_autoport = False
 
             # Find available spice port, if needed
             if params.get("spice"):
-                self.spice_port = utils_misc.find_free_port(8000, 8100)
+                self.spice_port = utils_misc.find_free_port(8000, 8100) or [random.randint(8000, 8100)]
 
             # Find random UUID if specified 'uuid = random' in config file
             if params.get("uuid") == "random":
