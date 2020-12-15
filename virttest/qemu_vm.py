@@ -517,7 +517,7 @@ class VM(virt_vm.BaseVM):
             monitor_id = "qmp_id_%s" % monitor_name
             if backend == 'tcp_socket':
                 host = chardev_params.get('chardev_host', '127.0.0.1')
-                port = str(utils_misc.find_free_ports(5000, 6000, 1, host)[0])
+                port = str(utils_misc.find_free_ports(5000, 6000, 1, host)[0] or random.randint(5000, 6000))
                 chardev_params['chardev_host'] = host
                 chardev_params['chardev_port'] = port
                 params["chardev_host_%s" % monitor_name] = host
@@ -1824,7 +1824,7 @@ class VM(virt_vm.BaseVM):
             self.serial_session_device = serials[0]
             host = params.get('chardev_host', '127.0.0.1')
             free_ports = utils_misc.find_free_ports(
-                5000, 5899, len(serials), host)
+                5000, 5899, len(serials), host) or [random.randint(5000, 5899) for i in range(len(serials))]
             reg_count = 0
         for index, serial in enumerate(serials):
             serial_params = params.object_params(serial)
@@ -2760,7 +2760,7 @@ class VM(virt_vm.BaseVM):
             host_ports = utils_misc.find_free_ports(
                 5000, 5899, len(redir_names))
             if not host_ports:
-                host_ports = [5000]
+                host_ports = [random.randint(5000, 5899) for i in range(len(redir_names))]
 
             old_redirs = {}
             if self.redirs:
@@ -2884,7 +2884,7 @@ class VM(virt_vm.BaseVM):
 
             # Find available VNC port, if needed
             if params.get("display") == "vnc":
-                self.vnc_port = utils_misc.find_free_port(5900, 6900, sequent=True)
+                self.vnc_port = utils_misc.find_free_port(5900, 6900, sequent=True) or random.randint(5900, 6900)
 
             # Find random UUID if specified 'uuid = random' in config file
             if params.get("uuid") == "random":
@@ -2932,7 +2932,7 @@ class VM(virt_vm.BaseVM):
 
             # Add migration parameters if required
             if migration_mode in ["tcp", "rdma", "x-rdma"]:
-                self.migration_port = utils_misc.find_free_port(5200, 5899)
+                self.migration_port = utils_misc.find_free_port(5200, 5899) or random.randint(5200, 5899)
                 incoming_val = (" -incoming " + migration_mode +
                                 ":0:%d" % self.migration_port)
                 if Flags.INCOMING_DEFER in self.devices.caps:
@@ -2950,7 +2950,7 @@ class VM(virt_vm.BaseVM):
                 qemu_command += incoming_val
             elif migration_mode == "exec":
                 if migration_exec_cmd is None:
-                    self.migration_port = utils_misc.find_free_port(5200, 5899)
+                    self.migration_port = utils_misc.find_free_port(5200, 5899) or random.randint(5200, 5899)
                     # check whether ip version supported by nc
                     if process.system("nc -h | grep -E '\-4 | \-6'",
                                       shell=True, ignore_status=True) == 0:
