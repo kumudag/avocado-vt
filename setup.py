@@ -31,7 +31,7 @@ def pre_post_plugin_type():
 if __name__ == "__main__":
     requirements = ["netifaces", "simplejson", "six"]
     if sys.version_info[:2] >= (3, 0):
-        requirements.append("avocado-framework>=68.0")
+        requirements.append("avocado-framework==83.0")
         requirements.append("netaddr")
         requirements.append("aexpect")
     else:
