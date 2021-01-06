@@ -198,7 +198,7 @@ class VirtTestLoader(loader.TestLoader):
         test_suite = []
         for params in (_ for _ in cartesian_parser.get_dicts()):
             # Evaluate the proper avocado-vt test name
-            test_name = None
+            test_name = params.get("shortname")
             if get_opt(self.config, 'vt.type') == "spice":
                 short_name_map_file = params.get("_short_name_map_file")
                 if "tests-variants.cfg" in short_name_map_file:
